@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MGRILLCAFE_analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", system-ui;
+        background: var(--bg-body);
+        color: var(--text-primary);
+        padding: 20px;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      :root {
+        --bg-body: #f1f5f9;
+        --bg-card: #ffffff;
+        --bg-side: #f8fafc;
+        --text-primary: #0f172a;
+        --text-secondary: #334155;
+        --border: #e2e8f0;
+        --accent: #3b82f6;
+        --success: #10b981;
+        --danger: #ef4444;
+      }
+      body.dark {
+        --bg-body: #0f172a;
+        --bg-card: #1e293b;
+        --bg-side: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: #cbd5e1;
+        --border: #334155;
+        --accent: #60a5fa;
+        --success: #34d399;
+        --danger: #f87171;
+      }
+      .container {
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 1.8rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .theme-toggle {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 8px 16px;
+        border-radius: 40px;
+        cursor: pointer;
+        display: flex;
+        gap: 8px;
+      }
+      .tabs {
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+      .tab-btn {
+        background: none;
+        border: none;
+        padding: 10px 20px;
+        font-size: 1rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        border-radius: 8px 8px 0 0;
+      }
+      .tab-btn.active {
+        background: var(--bg-card);
+        color: var(--accent);
+        border-bottom: 2px solid var(--accent);
+        font-weight: 500;
+      }
+      .tab-content {
+        display: none;
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 20px;
+        padding: 40px;
+        text-align: center;
+        background: var(--bg-side);
+        margin-bottom: 20px;
+        cursor: pointer;
+      }
+      .upload-area.drag-over {
+        background: var(--bg-card-hover);
+        border-color: var(--accent);
+      }
+      button {
+        background: var(--accent);
+        border: none;
+        color: white;
+        padding: 8px 18px;
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: 500;
+        margin-right: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button.secondary {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+      }
+      button.danger {
+        background: var(--danger);
+      }
+      .card-grid {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+      }
+      .stat-card {
+        background: var(--bg-side);
+        border-radius: 20px;
+        padding: 16px 20px;
+        flex: 1;
+        min-width: 150px;
+        border: 1px solid var(--border);
+      }
+      .stat-card h3 {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .stat-card .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 8px 10px;
+        text-align: right;
+      }
+      th {
+        background: var(--table-header);
+        font-weight: 600;
+        text-align: center;
+      }
+      td:first-child,
+      th:first-child {
+        text-align: center;
+        font-weight: 500;
+      }
+      .color-positive {
+        background: rgba(16, 185, 129, 0.2);
+        color: var(--success);
+      }
+      .color-negative {
+        background: rgba(239, 68, 68, 0.2);
+        color: var(--danger);
+      }
+      .chart-container {
+        margin: 30px 0;
+        background: var(--bg-side);
+        padding: 16px;
+        border-radius: 20px;
+      }
+      .flex-between {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+      input[type="date"] {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        border-radius: 30px;
+        color: var(--text-primary);
+      }
+      .info {
+        background: var(--bg-side);
+        padding: 12px;
+        border-radius: 16px;
+        margin-top: 20px;
+      }
+      footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1><i class="fas fa-chart-line"></i>Анализ почасовой</h1>
+        <div class="theme-toggle" id="themeToggle">
+          <i class="fas fa-moon"></i> Тёмная тема
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="upload">
+          <i class="fas fa-upload"></i> Даже не смотри сюда
+        </button>
+        <button class="tab-btn" data-tab="data">
+          <i class="fas fa-database"></i> Данные
+        </button>
+        <button class="tab-btn" data-tab="forecast">
+          <i class="fas fa-chart-simple"></i> Прогноз + факт
+        </button>
+        <button class="tab-btn" data-tab="charts">
+          <i class="fas fa-chart-bar"></i> Графики
+        </button>
+      </div>
+
+      <div id="upload" class="tab-content active">
+        <div class="upload-area" id="dropzone">
+          <i class="fas fa-cloud-upload-alt fa-2x"></i>
+          <p>Перетащите Excel-файлы или нажмите для выбора(не стоит это делать)</p>
+          <input
+            type="file"
+            id="fileInput"
+            multiple
+            accept=".xlsx, .xls"
+            style="display: none"
+          />
+        </div>
+        <div id="fileList" style="margin: 10px 0"></div>
+        <div class="flex-between">
+          <div>
+            <button id="processBtn">
+              <i class="fas fa-play"></i> Обработать
+            </button>
+            <button id="clearDataBtn" class="danger">
+              <i class="fas fa-trash"></i> Удалить все данные(даже не думай)
+            </button>
+          </div>
+          <div>
+            <button id="exportDataBtn" class="secondary">
+              <i class="fas fa-download"></i> Экспорт JSON
+            </button>
+            <button id="importDataBtn" class="secondary">
+              <i class="fas fa-upload"></i> Импорт JSON
+            </button>
+            <input
+              type="file"
+              id="importFile"
+              accept=".json"
+              style="display: none"
+            />
+          </div>
+        </div>
+        <div class="info">
+          <i class="fas fa-info-circle"></i> Данные хранятся в браузере. Прогноз
+          использует прошлый год + тренд.
+        </div>
+      </div>
+
+      <div id="data" class="tab-content">
+        <div class="card-grid" id="stats"></div>
+        <div style="overflow-x: auto">
+          <table id="dataTable">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Час</th>
+                <th>Сумма (руб)</th>
+                <th>Чеков</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="4">Загрузка...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="forecast" class="tab-content">
+        <div class="flex-between">
+          <div>
+            <label>📅 Дата прогноза:</label>
+            <input type="date" id="forecastDatePicker" />
+            <button id="runForecastBtn">
+              <i class="fas fa-chart-line"></i> Рассчитать
+            </button>
+            <button id="showComparisonBtn" class="secondary">
+              <i class="fas fa-balance-scale"></i> Сравнить с фактом
+            </button>
+          </div>
+        </div>
+        <div class="card-grid">
+          <div class="stat-card">
+            <h3>Дата</h3>
+            <div class="value" id="forecastDate">—</div>
+          </div>
+          <div class="stat-card">
+            <h3>Прогноз выручки</h3>
+            <div class="value" id="totalForecastSum">0</div>
+          </div>
+          <div class="stat-card">
+            <h3>Факт выручки</h3>
+            <div class="value" id="totalActualSum">0</div>
+          </div>
+          <div class="stat-card">
+            <h3>Отклонение</h3>
+            <div class="value" id="totalDeviation">0%</div>
+          </div>
+        </div>
+        <div id="trendInfo" class="info"></div>
+        <div style="overflow-x: auto">
+          <table id="comparisonTable">
+            <thead>
+              <tr>
+                <th>Час</th>
+                <th>Прогноз суммы</th>
+                <th>Факт суммы</th>
+                <th>Отклонение (руб)</th>
+                <th>Отклонение (%)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="chart-container">
+          <canvas id="comparisonChart" width="400" height="200"></canvas>
+        </div>
+      </div>
+
+      <div id="charts" class="tab-content">
+        <div class="chart-container">
+          <h3>Прогноз выручки по часам</h3>
+          <canvas id="hourlyForecastChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <h3>Факт за последние 7 дней (выберите час)</h3>
+          <div class="flex-between">
+            <span>Час:</span
+            ><select id="hourSelect"></select>
+          </div>
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+      <footer>
+        Данные хранятся в IndexedDB. Приложение не отправляет данные в сеть.
+      </footer>
+    </div>
+
+    <script>
+      // ---------- Работа с датами без смещения ----------
+      function formatLocalDate(date) {
+        let year = date.getFullYear();
+        let month = (date.getMonth() + 1).toString().padStart(2, "0");
+        let day = date.getDate().toString().padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function parseLocalDate(dateStr) {
+        let parts = dateStr.split("-");
+        if (parts.length !== 3) return null;
+        return new Date(
+          parseInt(parts[0]),
+          parseInt(parts[1]) - 1,
+          parseInt(parts[2]),
+        );
+      }
+
+      // Преобразование Excel serial number в локальную строку YYYY-MM-DD (без часового пояса)
+      function excelSerialToLocalDateStr(serial) {
+        // Excel считает 1 = 1900-01-01 (но есть ошибка на 1 день, исправляем)
+        const msPerDay = 86400000;
+        // 25569 = дни от 1900-01-01 до 1970-01-01
+        let utcDays = serial - 25569;
+        let date = new Date(utcDays * msPerDay);
+        // Берём UTC компоненты, чтобы получить ту же дату, что в Excel
+        let year = date.getUTCFullYear();
+        let month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+        let day = date.getUTCDate().toString().padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function parseDateCell(cell) {
+        if (typeof cell === "number") {
+          return excelSerialToLocalDateStr(cell);
+        }
+        if (typeof cell === "string") {
+          let match = cell.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+          match = cell.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+          if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+          // Попробуем через Date, но осторожно
+          let d = new Date(cell);
+          if (!isNaN(d.getTime())) {
+            let year = d.getUTCFullYear();
+            let month = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+            let day = d.getUTCDate().toString().padStart(2, "0");
+            return `${year}-${month}-${day}`;
+          }
+        }
+        return null;
+      }
+
+      // ---------- IndexedDB ----------
+      const DB_NAME = "HourlyReportsDB";
+      const STORE_NAME = "sales";
+      let db = null;
+
+      function openDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, 1);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            db = request.result;
+            resolve(db);
+          };
+          request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+            }
+          };
+        });
+      }
+
+      async function addRecords(records) {
+        if (!db) await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          let added = 0;
+          records.forEach((rec) => {
+            store.add(rec);
+            added++;
+          });
+          tx.oncomplete = () => resolve(added);
+          tx.onerror = (e) => reject(e.target.error);
+        });
+      }
+
+      async function getAllRecords() {
+        if (!db) await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readonly");
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.getAll();
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      async function clearAllRecords() {
+        if (!db) await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          const req = store.clear();
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      // ---------- Парсинг Excel (исправлен, даты без сдвига) ----------
+      function parseExcelFile(dataBuffer) {
+        const workbook = XLSX.read(dataBuffer, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (!rows || rows.length < 10) return [];
+
+        let headerRowIdx = -1;
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i][0] && rows[i][0].toString().includes("Час закрытия")) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+        if (headerRowIdx === -1) return [];
+
+        const headerRow = rows[headerRowIdx];
+        const sumCols = [],
+          checkCols = [];
+        for (let j = 0; j < headerRow.length; j++) {
+          if (headerRow[j] === "Сумма со скидкой, р.") sumCols.push(j);
+          if (headerRow[j] === "Чеков") checkCols.push(j);
+        }
+        if (sumCols.length === 0) return [];
+
+        let dateRowIdx = -1;
+        for (let offset = 1; offset <= 3; offset++) {
+          const idx = headerRowIdx - offset;
+          if (idx >= 0 && rows[idx]) {
+            let hasDate = false;
+            for (let j = 1; j < rows[idx].length; j++) {
+              const cell = rows[idx][j];
+              if (
+                (typeof cell === "number" && cell > 40000 && cell < 60000) ||
+                (typeof cell === "string" &&
+                  (cell.includes("-") || cell.includes(".")))
+              ) {
+                hasDate = true;
+                break;
+              }
+            }
+            if (hasDate) {
+              dateRowIdx = idx;
+              break;
+            }
+          }
+        }
+        if (dateRowIdx === -1) return [];
+
+        const datesRow = rows[dateRowIdx];
+        const hours = [];
+        for (let i = headerRowIdx + 1; i < rows.length; i++) {
+          const h = rows[i][0];
+          if (h === "" || h === "Итого") break;
+          hours.push(h);
+        }
+
+        const records = [];
+        for (let sumCol of sumCols) {
+          let checkCol = checkCols.find((c) => c > sumCol);
+          if (checkCol === undefined) continue;
+          let dateStr = parseDateCell(datesRow[sumCol]);
+          if (!dateStr && sumCol - 1 >= 0)
+            dateStr = parseDateCell(datesRow[sumCol - 1]);
+          if (!dateStr) continue;
+          for (let i = 0; i < hours.length; i++) {
+            let sumRaw = rows[headerRowIdx + 1 + i][sumCol];
+            let checksRaw = rows[headerRowIdx + 1 + i][checkCol];
+            let sum = parseFloat(String(sumRaw).replace(",", "."));
+            let checks = parseInt(String(checksRaw), 10);
+            if (isNaN(sum)) sum = 0;
+            if (isNaN(checks)) checks = 0;
+            if (sum !== 0 && checks !== 0) {
+              records.push({
+                date: dateStr,
+                hour: hours[i],
+                sum: sum,
+                checks: checks,
+              });
+            }
+          }
+        }
+        return records;
+      }
+
+      // ---------- Прогноз на дату (строка YYYY-MM-DD) ----------
+      async function computeForecastForDateStr(targetDateStr) {
+        const records = await getAllRecords();
+        if (records.length === 0) return null;
+        const targetDate = parseLocalDate(targetDateStr);
+        if (!targetDate) return null;
+        const forecastDateStr = formatLocalDate(targetDate);
+        const targetWeekday = targetDate.getDay();
+
+        const dataByKey = new Map();
+        records.forEach((r) => {
+          dataByKey.set(`${r.date}|${r.hour}`, {
+            sum: r.sum,
+            checks: r.checks,
+          });
+        });
+        const allDates = [...new Set(records.map((r) => r.date))].sort();
+        const hours = [...new Set(records.map((r) => r.hour))].sort(
+          (a, b) => a - b,
+        );
+        function getVal(date, hour, field) {
+          const rec = dataByKey.get(`${date}|${hour}`);
+          return rec ? rec[field] : null;
+        }
+
+        const today = new Date();
+        const last7Days = [];
+        for (let i = 1; i <= 7; i++) {
+          let d = new Date(today);
+          d.setDate(today.getDate() - i);
+          last7Days.push(formatLocalDate(d));
+        }
+        const availableLast7 = last7Days.filter((d) => allDates.includes(d));
+        let trend = 1,
+          trendInfo = "";
+        if (availableLast7.length > 0) {
+          let sumCurr = 0,
+            cntCurr = 0;
+          for (let date of availableLast7) {
+            for (let h of hours) {
+              let v = getVal(date, h, "sum");
+              if (v !== null) {
+                sumCurr += v;
+                cntCurr++;
+              }
+            }
+          }
+          let avgCurr = cntCurr ? sumCurr / cntCurr : 0;
+          let lastYearDates = availableLast7
+            .map((d) => parseInt(d.slice(0, 4)) - 1 + d.slice(4))
+            .filter((d) => allDates.includes(d));
+          let sumLast = 0,
+            cntLast = 0;
+          for (let date of lastYearDates) {
+            for (let h of hours) {
+              let v = getVal(date, h, "sum");
+              if (v !== null) {
+                sumLast += v;
+                cntLast++;
+              }
+            }
+          }
+          let avgLast = cntLast ? sumLast / cntLast : 0;
+          if (avgLast > 0) trend = avgCurr / avgLast;
+          trendInfo = `Тренд: последние 7 дней текущего года → средняя выручка ${avgCurr.toFixed(0)} руб., прошлый год ${avgLast.toFixed(0)} руб., коэфф. ${trend.toFixed(2)}`;
+        } else {
+          trendInfo =
+            "Недостаточно данных для тренда, используется только база прошлого года или средние 14 дней.";
+        }
+
+        const forecast = [];
+        let totalSum = 0,
+          totalChecks = 0;
+        for (let hour of hours) {
+          let baseSum = null;
+          let targetDatePrev = new Date(targetDate);
+          targetDatePrev.setFullYear(targetDatePrev.getFullYear() - 1);
+          let exactDateStr = formatLocalDate(targetDatePrev);
+          let val = getVal(exactDateStr, hour, "sum");
+          if (val !== null) {
+            baseSum = val;
+          } else {
+            for (let offset = -7; offset <= 7; offset++) {
+              let d = new Date(targetDatePrev);
+              d.setDate(targetDatePrev.getDate() + offset);
+              let dStr = formatLocalDate(d);
+              if (dStr !== exactDateStr && allDates.includes(dStr)) {
+                let wd = parseLocalDate(dStr).getDay();
+                if (wd === targetWeekday) {
+                  val = getVal(dStr, hour, "sum");
+                  if (val !== null) {
+                    baseSum = val;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          let forecastSum = baseSum !== null ? baseSum * trend : null;
+          if (forecastSum === null) {
+            let last14Days = [];
+            for (let i = 1; i <= 14; i++) {
+              let d = new Date(today);
+              d.setDate(today.getDate() - i);
+              last14Days.push(formatLocalDate(d));
+            }
+            let s = 0,
+              c = 0;
+            for (let date of last14Days) {
+              let v = getVal(date, hour, "sum");
+              if (v !== null) {
+                s += v;
+                c++;
+              }
+            }
+            forecastSum = c > 0 ? s / c : 0;
+          }
+          let baseChecks = null;
+          if (baseSum !== null) {
+            let ch = getVal(exactDateStr, hour, "checks");
+            if (ch !== null) baseChecks = ch;
+            else {
+              for (let offset = -7; offset <= 7; offset++) {
+                let d = new Date(targetDatePrev);
+                d.setDate(targetDatePrev.getDate() + offset);
+                let dStr = formatLocalDate(d);
+                if (dStr !== exactDateStr && allDates.includes(dStr)) {
+                  let wd = parseLocalDate(dStr).getDay();
+                  if (wd === targetWeekday) {
+                    ch = getVal(dStr, hour, "checks");
+                    if (ch !== null) {
+                      baseChecks = ch;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          let forecastChecks = baseChecks !== null ? baseChecks * trend : null;
+          if (forecastChecks === null) {
+            let last14Days = [];
+            for (let i = 1; i <= 14; i++) {
+              let d = new Date(today);
+              d.setDate(today.getDate() - i);
+              last14Days.push(formatLocalDate(d));
+            }
+            let s = 0,
+              c = 0;
+            for (let date of last14Days) {
+              let v = getVal(date, hour, "checks");
+              if (v !== null) {
+                s += v;
+                c++;
+              }
+            }
+            forecastChecks = c > 0 ? s / c : 0;
+          }
+          forecastSum = Math.round(forecastSum);
+          forecastChecks = Math.round(forecastChecks);
+          totalSum += forecastSum;
+          totalChecks += forecastChecks;
+          forecast.push({ hour, sum: forecastSum, checks: forecastChecks });
+        }
+        return {
+          forecastDate: forecastDateStr,
+          hourly: forecast,
+          totalSum,
+          totalChecks,
+          trendInfo,
+        };
+      }
+
+      async function getActualForDateStr(dateStr) {
+        const records = await getAllRecords();
+        const filtered = records.filter((r) => r.date === dateStr);
+        if (filtered.length === 0) return null;
+        const hourly = {};
+        filtered.forEach((r) => {
+          if (!hourly[r.hour]) hourly[r.hour] = { sum: 0, checks: 0 };
+          hourly[r.hour].sum += r.sum;
+          hourly[r.hour].checks += r.checks;
+        });
+        let totalSum = 0,
+          totalChecks = 0;
+        for (let h in hourly) {
+          totalSum += hourly[h].sum;
+          totalChecks += hourly[h].checks;
+        }
+        return { date: dateStr, hourly, totalSum, totalChecks };
+      }
+
+      async function showComparison(forecast, actual) {
+        if (!forecast) {
+          alert("Нет прогноза для выбранной даты");
+          return;
+        }
+        const tbody = document.querySelector("#comparisonTable tbody");
+        tbody.innerHTML = "";
+        const hoursSet = new Set([
+          ...forecast.hourly.map((h) => h.hour),
+          ...(actual ? Object.keys(actual.hourly) : []),
+        ]);
+        const hours = Array.from(hoursSet).sort((a, b) => a - b);
+        let totalForecast = 0,
+          totalActual = 0;
+        for (let hour of hours) {
+          const forecastHour = forecast.hourly.find((h) => h.hour == hour);
+          const actualHour = actual ? actual.hourly[hour] : null;
+          const forecastSum = forecastHour ? forecastHour.sum : 0;
+          const actualSum = actualHour ? actualHour.sum : 0;
+          const diffRub = actualSum - forecastSum;
+          const diffPercent = forecastSum
+            ? ((diffRub / forecastSum) * 100).toFixed(1)
+            : actualSum
+              ? 100
+              : 0;
+          const row = tbody.insertRow();
+          row.insertCell(0).innerText = hour;
+          row.insertCell(1).innerText = forecastSum.toLocaleString();
+          row.insertCell(2).innerText = actualSum.toLocaleString();
+          const cellRub = row.insertCell(3);
+          cellRub.innerText =
+            (diffRub >= 0 ? "+" : "") + diffRub.toLocaleString();
+          cellRub.className =
+            diffRub >= 0 ? "color-positive" : "color-negative";
+          const cellPct = row.insertCell(4);
+          cellPct.innerText = (diffPercent >= 0 ? "+" : "") + diffPercent + "%";
+          cellPct.className =
+            diffPercent >= 0 ? "color-positive" : "color-negative";
+          totalForecast += forecastSum;
+          totalActual += actualSum;
+        }
+        document.getElementById("totalForecastSum").innerText =
+          totalForecast.toLocaleString();
+        document.getElementById("totalActualSum").innerText =
+          totalActual.toLocaleString();
+        const totalDiffRub = totalActual - totalForecast;
+        const totalDiffPercent = totalForecast
+          ? ((totalDiffRub / totalForecast) * 100).toFixed(1)
+          : totalActual
+            ? 100
+            : 0;
+        const devSpan = document.getElementById("totalDeviation");
+        devSpan.innerText =
+          (totalDiffRub >= 0 ? "+" : "") + totalDiffPercent + "%";
+        devSpan.style.color =
+          totalDiffRub >= 0 ? "var(--success)" : "var(--danger)";
+        document.getElementById("forecastDate").innerText =
+          forecast.forecastDate;
+        document.getElementById("trendInfo").innerHTML = forecast.trendInfo;
+
+        const ctx = document.getElementById("comparisonChart").getContext("2d");
+        if (window.compChart) window.compChart.destroy();
+        window.compChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: hours.map((h) => `${h}:00`),
+            datasets: [
+              {
+                label: "Прогноз",
+                data: hours.map(
+                  (h) => forecast.hourly.find((f) => f.hour == h)?.sum || 0,
+                ),
+                backgroundColor: "#3b82f6",
+                borderRadius: 6,
+              },
+              {
+                label: "Факт",
+                data: hours.map((h) =>
+                  actual ? actual.hourly[h]?.sum || 0 : 0,
+                ),
+                backgroundColor: "#10b981",
+                borderRadius: 6,
+              },
+            ],
+          },
+          options: { responsive: true, maintainAspectRatio: true },
+        });
+      }
+
+      // ---------- UI ----------
+      async function refreshDataTable() {
+        const records = await getAllRecords();
+        const totalSum = records.reduce((a, b) => a + b.sum, 0);
+        const totalChecks = records.reduce((a, b) => a + b.checks, 0);
+        const uniqueDates = new Set(records.map((r) => r.date));
+        document.getElementById("stats").innerHTML = `
+            <div class="stat-card"><h3>Всего записей</h3><div class="value">${records.length}</div></div>
+            <div class="stat-card"><h3>Диапазон дат</h3><div class="value">${uniqueDates.size} дн.</div></div>
+            <div class="stat-card"><h3>Всего чеков</h3><div class="value">${totalChecks.toLocaleString()}</div></div>
+            <div class="stat-card"><h3>Общая выручка</h3><div class="value">${Math.round(totalSum).toLocaleString()}</div></div>
+        `;
+        const tbody = document.querySelector("#dataTable tbody");
+        tbody.innerHTML = "";
+        const last100 = records.slice(-100).reverse();
+        for (let r of last100) {
+          const row = tbody.insertRow();
+          row.insertCell(0).innerText = r.date;
+          row.insertCell(1).innerText = r.hour;
+          row.insertCell(2).innerText = r.sum.toLocaleString();
+          row.insertCell(3).innerText = r.checks.toLocaleString();
+        }
+      }
+
+      let hourlyChart = null,
+        dailyChart = null;
+      async function renderCharts(forecast) {
+        if (!forecast) return;
+        const ctx1 = document
+          .getElementById("hourlyForecastChart")
+          .getContext("2d");
+        if (hourlyChart) hourlyChart.destroy();
+        hourlyChart = new Chart(ctx1, {
+          type: "bar",
+          data: {
+            labels: forecast.hourly.map((h) => `${h.hour}:00`),
+            datasets: [
+              {
+                label: "Прогноз выручки (руб)",
+                data: forecast.hourly.map((h) => h.sum),
+                backgroundColor: "#ef4444",
+                borderRadius: 8,
+              },
+            ],
+          },
+          options: { responsive: true },
+        });
+        const records = await getAllRecords();
+        const hours = [...new Set(records.map((r) => r.hour))].sort(
+          (a, b) => a - b,
+        );
+        const select = document.getElementById("hourSelect");
+        select.innerHTML = "";
+        hours.forEach((h) => {
+          let opt = document.createElement("option");
+          opt.value = h;
+          opt.textContent = `${h}:00`;
+          select.appendChild(opt);
+        });
+        if (hours.length) updateDailyChart(select.value);
+        select.onchange = () => updateDailyChart(select.value);
+      }
+
+      async function updateDailyChart(selectedHour) {
+        const records = await getAllRecords();
+        if (records.length === 0) return;
+        const last7Days = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+          let d = new Date(today);
+          d.setDate(today.getDate() - i);
+          last7Days.push(formatLocalDate(d));
+        }
+        const dataByDate = {};
+        for (let date of last7Days) dataByDate[date] = 0;
+        records.forEach((r) => {
+          if (
+            last7Days.includes(r.date) &&
+            String(r.hour) === String(selectedHour)
+          ) {
+            dataByDate[r.date] += r.sum;
+          }
+        });
+        const values = last7Days.map((d) => dataByDate[d]);
+        if (dailyChart) dailyChart.destroy();
+        const ctx2 = document.getElementById("dailyChart").getContext("2d");
+        dailyChart = new Chart(ctx2, {
+          type: "line",
+          data: {
+            labels: last7Days.map((d) => d.slice(5)),
+            datasets: [
+              {
+                label: `Выручка в ${selectedHour}:00 (руб)`,
+                data: values,
+                borderColor: "#3b82f6",
+                tension: 0.2,
+                fill: false,
+              },
+            ],
+          },
+          options: { responsive: true },
+        });
+      }
+
+      // ---------- Обработка файлов ----------
+      let pendingFiles = [];
+      function updateFileList() {
+        document.getElementById("fileList").innerHTML = pendingFiles.length
+          ? pendingFiles.map((f) => `<div>📄 ${f.name}</div>`).join("")
+          : "Файлы не выбраны";
+      }
+      async function processPendingFiles() {
+        if (!pendingFiles.length) return alert("Нет файлов");
+        let totalAdded = 0;
+        for (let file of pendingFiles) {
+          const buffer = await file.arrayBuffer();
+          const records = parseExcelFile(buffer);
+          if (!records.length) {
+            alert(`В файле ${file.name} нет данных`);
+            continue;
+          }
+          const added = await addRecords(records);
+          totalAdded += added;
+        }
+        alert(`Добавлено ${totalAdded} записей`);
+        pendingFiles = [];
+        updateFileList();
+        await refreshDataTable();
+        const picker = document.getElementById("forecastDatePicker");
+        const selected = picker.value;
+        if (selected) {
+          const forecast = await computeForecastForDateStr(selected);
+          const actual = await getActualForDateStr(selected);
+          await showComparison(forecast, actual);
+          await renderCharts(forecast);
+        }
+      }
+
+      async function exportData() {
+        const data = await getAllRecords();
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "hourly_data.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      function importData() {
+        document.getElementById("importFile").click();
+      }
+      document
+        .getElementById("importFile")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const text = await file.text();
+          const records = JSON.parse(text);
+          if (!Array.isArray(records)) return alert("Неверный формат");
+          await clearAllRecords();
+          await addRecords(records);
+          await refreshDataTable();
+          const picker = document.getElementById("forecastDatePicker");
+          const selected = picker.value;
+          if (selected) {
+            const forecast = await computeForecastForDateStr(selected);
+            const actual = await getActualForDateStr(selected);
+            await showComparison(forecast, actual);
+            await renderCharts(forecast);
+          }
+          alert("Импорт завершён");
+        });
+
+      function initTheme() {
+        const isDark = localStorage.getItem("theme") === "dark";
+        if (isDark) document.body.classList.add("dark");
+        document.getElementById("themeToggle").addEventListener("click", () => {
+          document.body.classList.toggle("dark");
+          localStorage.setItem(
+            "theme",
+            document.body.classList.contains("dark") ? "dark" : "light",
+          );
+        });
+      }
+
+      window.addEventListener("DOMContentLoaded", async () => {
+        await openDB();
+        initTheme();
+
+        const picker = document.getElementById("forecastDatePicker");
+        const today = new Date();
+        picker.value = formatLocalDate(today);
+
+        document.getElementById("runForecastBtn").onclick = async () => {
+          const selected = picker.value;
+          if (!selected) return;
+          const forecast = await computeForecastForDateStr(selected);
+          const actual = await getActualForDateStr(selected);
+          await showComparison(forecast, actual);
+          await renderCharts(forecast);
+        };
+        document.getElementById("showComparisonBtn").onclick = async () => {
+          const selected = picker.value;
+          if (!selected) return;
+          const forecast = await computeForecastForDateStr(selected);
+          const actual = await getActualForDateStr(selected);
+          await showComparison(forecast, actual);
+        };
+
+        const dropzone = document.getElementById("dropzone"),
+          fileInput = document.getElementById("fileInput");
+        dropzone.addEventListener("click", () => fileInput.click());
+        dropzone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dropzone.classList.add("drag-over");
+        });
+        dropzone.addEventListener("dragleave", () =>
+          dropzone.classList.remove("drag-over"),
+        );
+        dropzone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dropzone.classList.remove("drag-over");
+          pendingFiles.push(...Array.from(e.dataTransfer.files));
+          updateFileList();
+        });
+        fileInput.addEventListener("change", (e) => {
+          pendingFiles.push(...Array.from(e.target.files));
+          updateFileList();
+          fileInput.value = "";
+        });
+        document.getElementById("processBtn").onclick = processPendingFiles;
+        document.getElementById("clearDataBtn").onclick = async () => {
+          if (confirm("Удалить все данные?")) {
+            await clearAllRecords();
+            await refreshDataTable();
+            const selected = picker.value;
+            if (selected) {
+              const forecast = await computeForecastForDateStr(selected);
+              const actual = await getActualForDateStr(selected);
+              await showComparison(forecast, actual);
+              await renderCharts(forecast);
+            }
+          }
+        };
+        document.getElementById("exportDataBtn").onclick = exportData;
+        document.getElementById("importDataBtn").onclick = importData;
+
+        // Tabs
+        document.querySelectorAll(".tab-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const tabId = btn.getAttribute("data-tab");
+            document
+              .querySelectorAll(".tab-content")
+              .forEach((tc) => tc.classList.remove("active"));
+            document.getElementById(tabId).classList.add("active");
+            document
+              .querySelectorAll(".tab-btn")
+              .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            if (tabId === "data") await refreshDataTable();
+            if (tabId === "forecast") {
+              const selected = picker.value;
+              if (selected) {
+                const forecast = await computeForecastForDateStr(selected);
+                const actual = await getActualForDateStr(selected);
+                await showComparison(forecast, actual);
+              }
+            }
+            if (tabId === "charts") {
+              const selected = picker.value;
+              if (selected) {
+                const forecast = await computeForecastForDateStr(selected);
+                await renderCharts(forecast);
+              }
+            }
+          });
+        });
+
+        await refreshDataTable();
+        const initialSelected = picker.value;
+        if (initialSelected) {
+          const forecast = await computeForecastForDateStr(initialSelected);
+          const actual = await getActualForDateStr(initialSelected);
+          await showComparison(forecast, actual);
+          await renderCharts(forecast);
+        }
+      });
+    </script>
+  </body>
+</html>
