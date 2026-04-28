@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MGRILLCAFE_analytics</title>
+    <title>Почасовой аналитик — прогноз + факт (без сдвига дат)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <link
@@ -232,7 +232,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1><i class="fas fa-chart-line"></i>Анализ почасовой</h1>
+        <h1><i class="fas fa-chart-line"></i> Почасовой аналитик</h1>
         <div class="theme-toggle" id="themeToggle">
           <i class="fas fa-moon"></i> Тёмная тема
         </div>
@@ -240,7 +240,7 @@
 
       <div class="tabs">
         <button class="tab-btn active" data-tab="upload">
-          <i class="fas fa-upload"></i> Даже не смотри сюда
+          <i class="fas fa-upload"></i> Загрузка
         </button>
         <button class="tab-btn" data-tab="data">
           <i class="fas fa-database"></i> Данные
@@ -256,7 +256,7 @@
       <div id="upload" class="tab-content active">
         <div class="upload-area" id="dropzone">
           <i class="fas fa-cloud-upload-alt fa-2x"></i>
-          <p>Перетащите Excel-файлы или нажмите для выбора(не стоит это делать)</p>
+          <p>Перетащите Excel-файлы или нажмите для выбора</p>
           <input
             type="file"
             id="fileInput"
@@ -272,7 +272,7 @@
               <i class="fas fa-play"></i> Обработать
             </button>
             <button id="clearDataBtn" class="danger">
-              <i class="fas fa-trash"></i> Удалить все данные(даже не думай)
+              <i class="fas fa-trash"></i> Удалить все данные
             </button>
           </div>
           <div>
@@ -291,8 +291,8 @@
           </div>
         </div>
         <div class="info">
-          <i class="fas fa-info-circle"></i> Данные хранятся в браузере. Прогноз
-          использует прошлый год + тренд.
+          <i class="fas fa-info-circle"></i> Данные хранятся в GitHub и доступны
+          с любого устройства. Прогноз использует прошлый год + тренд.
         </div>
       </div>
 
@@ -383,7 +383,7 @@
         </div>
       </div>
       <footer>
-        Данные хранятся в IndexedDB. Приложение не отправляет данные в сеть.
+        Данные хранятся в GitHub Gist. Доступны с любого устройства по ссылке.
       </footer>
     </div>
 
@@ -441,66 +441,84 @@
         return null;
       }
 
-      // ---------- IndexedDB ----------
-      const DB_NAME = "HourlyReportsDB";
-      const STORE_NAME = "sales";
-      let db = null;
+      // ---------- GitHub Gist storage ----------
+      const GIST_ID = "b5b219cb910b97894c9a80805d095f07";
+      const GIST_FILE = "data.json";
+      // Вставь сюда свой токен (тот что создал на github.com/settings/tokens)
+      const GITHUB_TOKEN = "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";
 
-      function openDB() {
-        return new Promise((resolve, reject) => {
-          const request = indexedDB.open(DB_NAME, 1);
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () => {
-            db = request.result;
-            resolve(db);
-          };
-          request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-              db.createObjectStore(STORE_NAME, {
-                keyPath: "id",
-                autoIncrement: true,
-              });
-            }
-          };
-        });
+      let _cache = null; // локальный кэш чтобы не дёргать Gist лишний раз
+
+      async function openDB() {
+        // загружаем данные из Gist при старте
+        _cache = await _loadFromGist();
+      }
+
+      async function _loadFromGist() {
+        try {
+          const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          });
+          if (!res.ok)
+            throw new Error("Ошибка загрузки из Gist: " + res.status);
+          const json = await res.json();
+          const content = json.files[GIST_FILE]?.content;
+          return content ? JSON.parse(content) : [];
+        } catch (e) {
+          console.error(e);
+          alert(
+            "Не удалось загрузить данные из GitHub. Проверь токен в файле.",
+          );
+          return [];
+        }
+      }
+
+      async function _saveToGist(records) {
+        try {
+          const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              files: {
+                [GIST_FILE]: { content: JSON.stringify(records) },
+              },
+            }),
+          });
+          if (!res.ok)
+            throw new Error("Ошибка сохранения в Gist: " + res.status);
+        } catch (e) {
+          console.error(e);
+          alert("Не удалось сохранить данные в GitHub. Проверь токен в файле.");
+        }
       }
 
       async function addRecords(records) {
-        if (!db) await openDB();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          let added = 0;
-          records.forEach((rec) => {
-            store.add(rec);
-            added++;
-          });
-          tx.oncomplete = () => resolve(added);
-          tx.onerror = (e) => reject(e.target.error);
+        if (!_cache) _cache = [];
+        // добавляем id чтобы не сломать остальной код
+        const maxId = _cache.reduce((m, r) => Math.max(m, r.id || 0), 0);
+        records.forEach((rec, i) => {
+          rec.id = maxId + i + 1;
         });
+        _cache.push(...records);
+        await _saveToGist(_cache);
+        return records.length;
       }
 
       async function getAllRecords() {
-        if (!db) await openDB();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readonly");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.getAll();
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => reject(req.error);
-        });
+        if (_cache === null) _cache = await _loadFromGist();
+        return _cache;
       }
 
       async function clearAllRecords() {
-        if (!db) await openDB();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.clear();
-          req.onsuccess = () => resolve();
-          req.onerror = () => reject(req.error);
-        });
+        _cache = [];
+        await _saveToGist([]);
       }
 
       // ---------- Парсинг Excel (исправлен, даты без сдвига) ----------
