@@ -291,8 +291,7 @@
           </div>
         </div>
         <div class="info">
-          <i class="fas fa-info-circle"></i> Данные хранятся в GitHub и доступны
-          с любого устройства. Прогноз использует прошлый год + тренд.
+          <i class="fas fa-info-circle"></i> Данные хранятся в облаке и доступны с любого устройства. Прогноз использует прошлый год + тренд.
         </div>
       </div>
 
@@ -383,7 +382,7 @@
         </div>
       </div>
       <footer>
-        Данные хранятся в GitHub Gist. Доступны с любого устройства по ссылке.
+        Данные хранятся в облаке. Доступны с любого устройства по ссылке.
       </footer>
     </div>
 
@@ -441,84 +440,67 @@
         return null;
       }
 
-      // ---------- GitHub Gist storage ----------
-      const GIST_ID = "b5b219cb910b97894c9a80805d095f07";
-      const GIST_FILE = "data.json";
-      // Вставь сюда свой токен (тот что создал на github.com/settings/tokens)
-      const GITHUB_TOKEN = "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";
+      // ---------- JSONBin storage ----------
+      const JSONBIN_ID  = "69f04237aaba882197470fa8";
+      const JSONBIN_KEY = "$2a$10$8.zfdtXFLdGwRN.hZk3g9u34hDjVhz9jV1MMsinf.VCUxoa2Rfvha";
+      const JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_ID;
 
-      let _cache = null; // локальный кэш чтобы не дёргать Gist лишний раз
+      let _cache = null;
 
       async function openDB() {
-        // загружаем данные из Gist при старте
-        _cache = await _loadFromGist();
+        _cache = await _load();
       }
 
-      async function _loadFromGist() {
+      async function _load() {
         try {
-          const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-            headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json",
-            },
+          const res = await fetch(JSONBIN_URL + "/latest", {
+            headers: { "X-Master-Key": JSONBIN_KEY }
           });
-          if (!res.ok)
-            throw new Error("Ошибка загрузки из Gist: " + res.status);
+          if (!res.ok) throw new Error("Ошибка загрузки: " + res.status);
           const json = await res.json();
-          const content = json.files[GIST_FILE]?.content;
-          return content ? JSON.parse(content) : [];
-        } catch (e) {
+          const data = json.record;
+          return Array.isArray(data) ? data : (data.data || []);
+        } catch(e) {
           console.error(e);
-          alert(
-            "Не удалось загрузить данные из GitHub. Проверь токен в файле.",
-          );
+          alert("Не удалось загрузить данные. Проверь интернет-соединение.");
           return [];
         }
       }
 
-      async function _saveToGist(records) {
+      async function _save(records) {
         try {
-          const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
-            method: "PATCH",
+          const res = await fetch(JSONBIN_URL, {
+            method: "PUT",
             headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json",
               "Content-Type": "application/json",
+              "X-Master-Key": JSONBIN_KEY
             },
-            body: JSON.stringify({
-              files: {
-                [GIST_FILE]: { content: JSON.stringify(records) },
-              },
-            }),
+            body: JSON.stringify(records)
           });
-          if (!res.ok)
-            throw new Error("Ошибка сохранения в Gist: " + res.status);
-        } catch (e) {
+          if (!res.ok) throw new Error("Ошибка сохранения: " + res.status);
+        } catch(e) {
           console.error(e);
-          alert("Не удалось сохранить данные в GitHub. Проверь токен в файле.");
+          alert("Не удалось сохранить данные. Проверь интернет-соединение.");
         }
       }
 
       async function addRecords(records) {
-        if (!_cache) _cache = [];
-        // добавляем id чтобы не сломать остальной код
+        if (!_cache) _cache = await _load();
         const maxId = _cache.reduce((m, r) => Math.max(m, r.id || 0), 0);
-        records.forEach((rec, i) => {
-          rec.id = maxId + i + 1;
-        });
+        records.forEach((rec, i) => { rec.id = maxId + i + 1; });
         _cache.push(...records);
-        await _saveToGist(_cache);
+        await _save(_cache);
         return records.length;
       }
 
       async function getAllRecords() {
-        if (_cache === null) _cache = await _loadFromGist();
+        if (_cache === null) _cache = await _load();
         return _cache;
       }
 
       async function clearAllRecords() {
         _cache = [];
-        await _saveToGist([]);
+        await _save([]);
       }
 
       // ---------- Парсинг Excel (исправлен, даты без сдвига) ----------
