@@ -440,10 +440,9 @@
         return null;
       }
 
-      // ---------- JSONBin storage ----------
-      const JSONBIN_ID  = "69f04237aaba882197470fa8";
-      const JSONBIN_KEY = "$2a$10$8.zfdtXFLdGwRN.hZk3g9u34hDjVhz9jV1MMsinf.VCUxoa2Rfvha";
-      const JSONBIN_URL = "https://api.jsonbin.io/v3/b/" + JSONBIN_ID;
+      // ---------- npoint.io storage ----------
+      const NPOINT_ID  = "59a1b015807b70ea54af";
+      const NPOINT_URL = "https://api.npoint.io/" + NPOINT_ID;
 
       let _cache = null;
 
@@ -453,13 +452,10 @@
 
       async function _load() {
         try {
-          const res = await fetch(JSONBIN_URL + "/latest", {
-            headers: { "X-Master-Key": JSONBIN_KEY }
-          });
+          const res = await fetch(NPOINT_URL);
           if (!res.ok) throw new Error("Ошибка загрузки: " + res.status);
-          const json = await res.json();
-          const data = json.record;
-          return Array.isArray(data) ? data : (data.data || []);
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
         } catch(e) {
           console.error(e);
           alert("Не удалось загрузить данные. Проверь интернет-соединение.");
@@ -469,12 +465,9 @@
 
       async function _save(records) {
         try {
-          const res = await fetch(JSONBIN_URL, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Master-Key": JSONBIN_KEY
-            },
+          const res = await fetch(NPOINT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(records)
           });
           if (!res.ok) throw new Error("Ошибка сохранения: " + res.status);
